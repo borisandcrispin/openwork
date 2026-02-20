@@ -404,9 +404,6 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
               OAuth opens in your browser. API keys are stored locally by OpenCode (not in your repo). Use{" "}
               <span class="font-mono">/models</span> to pick a default.
             </div>
-            <Button variant="ghost" onClick={handleClose} disabled={actionDisabled()}>
-              Close
-            </Button>
           </div>
         </div>
       </div>
