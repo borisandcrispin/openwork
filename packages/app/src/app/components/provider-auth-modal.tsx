@@ -84,6 +84,15 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
       });
   });
 
+  const filteredEntries = createMemo(() => {
+    const query = providerSearch().trim().toLowerCase();
+    if (!query) return entries();
+
+    return entries().filter((entry) =>
+      `${entry.name} ${entry.id}`.toLowerCase().includes(query),
+    );
+  });
+
   const methodLabel = (method: ProviderAuthMethod) =>
     method.label || (method.type === "oauth" ? "OAuth" : "API key");
 
@@ -91,6 +100,7 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
 
   const [view, setView] = createSignal<"list" | "method" | "api">("list");
   const [selectedProviderId, setSelectedProviderId] = createSignal<string | null>(null);
+  const [providerSearch, setProviderSearch] = createSignal("");
   const [apiKeyInput, setApiKeyInput] = createSignal("");
   const [localError, setLocalError] = createSignal<string | null>(null);
 
@@ -104,6 +114,7 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
   const resetState = () => {
     setView("list");
     setSelectedProviderId(null);
+    setProviderSearch("");
     setApiKeyInput("");
     setLocalError(null);
   };
@@ -235,54 +246,72 @@ export default function ProviderAuthModal(props: ProviderAuthModalProps) {
             <Show when={!props.loading}>
               <div class="flex-1 space-y-2 overflow-y-auto pr-1 -mr-1">
                 <Show when={resolvedView() === "list"}>
-                  <Show
-                    when={entries().length}
-                    fallback={<div class="text-sm text-gray-10">No providers available.</div>}
-                  >
-                    <For each={entries()}>
-                      {(entry) => (
-                        <button
-                          type="button"
-                          class="w-full rounded-xl border border-gray-6 bg-gray-1/40 px-4 py-3 text-left transition-colors hover:bg-gray-1/70 disabled:opacity-60 disabled:cursor-not-allowed"
-                          disabled={actionDisabled()}
-                          onClick={() => handleEntrySelect(entry)}
-                        >
-                          <div class="flex items-center justify-between gap-3">
-                            <div class="min-w-0">
-                              <div class="text-sm font-medium text-gray-12 truncate">{entry.name}</div>
-                              <div class="text-[11px] text-gray-8 font-mono truncate">{entry.id}</div>
-                            </div>
-                            <div class="flex items-center justify-end gap-2 shrink-0 min-w-[108px]">
-                              <Show
-                                when={entry.connected}
-                                fallback={<span class="text-xs text-gray-9">Connect</span>}
-                              >
-                                <div class="flex items-center gap-1 text-[11px] text-green-11 bg-green-7/10 border border-green-7/20 px-2 py-1 rounded-full">
-                                  <CheckCircle2 size={12} />
-                                  Connected
-                                </div>
-                              </Show>
-                            </div>
-                          </div>
-                          <div class="mt-2 flex flex-wrap gap-2">
-                            <For each={entry.methods}>
-                              {(method) => (
-                                <span
-                                  class={`text-[10px] uppercase tracking-[0.2em] px-2 py-1 rounded-full border ${
-                                    method.type === "oauth"
-                                      ? "bg-indigo-7/15 text-indigo-11 border-indigo-7/30"
-                                      : "bg-gray-3 text-gray-11 border-gray-6"
-                                  }`}
+                  <div class="space-y-3">
+                    <input
+                      type="search"
+                      value={providerSearch()}
+                      onInput={(event) => setProviderSearch(event.currentTarget.value)}
+                      placeholder="Search providers"
+                      class="w-full rounded-xl border border-gray-6 bg-gray-1/40 px-3 py-2 text-sm text-gray-12 placeholder:text-gray-9 focus:outline-none focus:ring-2 focus:ring-indigo-7/30"
+                      disabled={actionDisabled()}
+                      autocomplete="off"
+                    />
+
+                    <Show
+                      when={filteredEntries().length}
+                      fallback={
+                        <div class="text-sm text-gray-10">
+                          {providerSearch().trim()
+                            ? "No providers match your search."
+                            : "No providers available."}
+                        </div>
+                      }
+                    >
+                      <For each={filteredEntries()}>
+                        {(entry) => (
+                          <button
+                            type="button"
+                            class="w-full rounded-xl border border-gray-6 bg-gray-1/40 px-4 py-3 text-left transition-colors hover:bg-gray-1/70 disabled:opacity-60 disabled:cursor-not-allowed"
+                            disabled={actionDisabled()}
+                            onClick={() => handleEntrySelect(entry)}
+                          >
+                            <div class="flex items-center justify-between gap-3">
+                              <div class="min-w-0">
+                                <div class="text-sm font-medium text-gray-12 truncate">{entry.name}</div>
+                                <div class="text-[11px] text-gray-8 font-mono truncate">{entry.id}</div>
+                              </div>
+                              <div class="flex items-center justify-end gap-2 shrink-0 min-w-[108px]">
+                                <Show
+                                  when={entry.connected}
+                                  fallback={<span class="text-xs text-gray-9">Connect</span>}
                                 >
-                                  {methodLabel(method)}
-                                </span>
-                              )}
-                            </For>
-                          </div>
-                        </button>
-                      )}
-                    </For>
-                  </Show>
+                                  <div class="flex items-center gap-1 text-[11px] text-green-11 bg-green-7/10 border border-green-7/20 px-2 py-1 rounded-full">
+                                    <CheckCircle2 size={12} />
+                                    Connected
+                                  </div>
+                                </Show>
+                              </div>
+                            </div>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                              <For each={entry.methods}>
+                                {(method) => (
+                                  <span
+                                    class={`text-[10px] uppercase tracking-[0.2em] px-2 py-1 rounded-full border ${
+                                      method.type === "oauth"
+                                        ? "bg-indigo-7/15 text-indigo-11 border-indigo-7/30"
+                                        : "bg-gray-3 text-gray-11 border-gray-6"
+                                    }`}
+                                  >
+                                    {methodLabel(method)}
+                                  </span>
+                                )}
+                              </For>
+                            </div>
+                          </button>
+                        )}
+                      </For>
+                    </Show>
+                  </div>
                 </Show>
 
                 <Show when={resolvedView() === "method" && selectedEntry()}>
